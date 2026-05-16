@@ -4,7 +4,6 @@ from discord import app_commands
 import json
 import random
 
-TOKEN = "MTUwNDgzNjM3NjA5OTU1MzUyMg.G4-7DM.4FxJMcuPxZ43ISHZRWBE1rcLnR7RmX-zKqyNZU"
 
 # =========================
 # ตั้งค่า Bot
