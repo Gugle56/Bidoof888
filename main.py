@@ -11,121 +11,109 @@ app = Flask(__name__)
 def home():
     return "Bot running!"
 
-# =========================
-# Web Server
-# =========================
 def run_web():
     port = int(os.environ.get("PORT", 10000))
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        use_reloader=False
-    )
+    app.run(host="0.0.0.0", port=port, use_reloader=False)
 
-# =========================
-# Webhook Alert
-# =========================
 def send_alert(msg):
     webhook = os.getenv("WEBHOOK_URL")
-    if not webhook:
-        return
+    if not webhook: return
     try:
-        requests.post(
-            webhook,
-            json={"content": f"⚠️ {msg}"},
-            timeout=10
-        )
-    except Exception as e:
-        print("Webhook Error:", e)
+        requests.post(webhook, json={"content": f"⚠️ {msg}"}, timeout=10)
+    except:
+        pass
 
-# =========================
-# Bot Loop
-# =========================
-def bot_loop():
-    print("BOT LOOP STARTED")
+# ==========================================
+# ฟังก์ชันทำงานแยกรายบัญชี (ไม่ขัดขวางกันเอง)
+# ==========================================
+def individual_bot_worker(account_index, token, channel_id):
+    print(f"[SYSTEM] บัญชีที่ {account_index} เริ่มเปิดระบบแยกทำงานอิสระแล้ว...")
+    
+    messages = [
+        "hello", "hi", "yo", "gg", "lol", "wow", 
+        "test", "pokemon", "555", "หวัดดี", "มีคนไหม", "เล่นไรอยู่"
+    ]
+    url = f"https://discord.com{channel_id}/messages"
+    headers = {
+        "Authorization": token,
+        "Content-Type": "application/json"
+    }
 
+    while True:
+        try:
+            print(f"👉 บัญชีที่ {account_index} กำลังส่งข้อความ... (Prefix: {token[:15]})")
+            response = requests.post(
+                url, 
+                json={"content": random.choice(messages)}, 
+                headers=headers, 
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                print(f"✅ บัญชีที่ {account_index} ส่งสำเร็จ! [Status 200]")
+            
+            elif response.status_code == 429: # ติดลิมิต Discord
+                retry_seconds = response.json().get("retry_after", 30)
+                print(f"🛑 บัญชีที่ {account_index} ติด Rate Limit! ต้องรอ {retry_seconds} วินาที (บัญชีอื่นไม่รอกับคุณนะ)")
+                time.sleep(float(retry_seconds))
+                continue
+                
+            else:
+                print(f"❌ บัญชีที่ {account_index} เกิดข้อผิดพลาด รหัส: {response.status_code} - {response.text}")
+                send_alert(f"บัญชีที่ {account_index} ส่งไม่ผ่าน รหัส {response.status_code}")
+
+        except Exception as e:
+            print(f"💥 บัญชีที่ {account_index} เชื่อมต่อล้มเหลว: {e}")
+            time.sleep(10)
+
+        # ตั้งเวลาเว้นระยะการส่งของ "บัญชีนี้" (ปรับเวลาส่งถี่-ห่าง ได้ตามใจชอบตรงนี้)
+        # เช่น ส่งเสร็จแล้วให้บัญชีนี้พัก 15 ถึง 30 วินาที ก่อนส่งคำต่อไป
+        sleep_time = random.randint(15, 30)
+        print(f"⏳ บัญชีที่ {account_index} พักรอส่งรอบต่อไปในอีก {sleep_time} วินาที...")
+        time.sleep(sleep_time)
+
+# ==========================================
+# ฟังก์ชันหลักในการกระจายงาน
+# ==========================================
+def main_bot_manager():
     TOKENS = [
         os.getenv("TOKEN_1"),
         os.getenv("TOKEN_2"),
         os.getenv("TOKEN_3")
     ]
-
-    # ลบ None และช่องว่าง
-    TOKENS = [t.strip() for t in TOKENS if t]
+    # กรองเอาเฉพาะ Token ที่มีอยู่จริง
+    valid_tokens = [t.strip() for t in TOKENS if t]
     CHANNEL_ID = os.getenv("CHANNEL_ID")
 
-    print("TOKENS FOUND:", len(TOKENS))
-    print("CHANNEL:", CHANNEL_ID)
+    print(f"\n=======================")
+    print(f"🤖 [MANAGER] ตรวจพบ TOKENS ทั้งหมด: {len(valid_tokens)} ตัว")
+    print(f"📺 [MANAGER]เป้าหมาย CHANNEL_ID: {CHANNEL_ID}")
+    print(f"=======================\n")
 
-    if not TOKENS:
-        print("ไม่พบ TOKEN")
+    if not valid_tokens or not CHANNEL_ID:
+        print("❌ ข้อมูลไม่ครบถ้วน ตัวจัดการบอทไม่ทำงาน")
         return
-    if not CHANNEL_ID:
-        print("ไม่พบ CHANNEL_ID")
-        return
 
-    messages = [
-        "hello", "hi", "yo", "gg", "lol", "wow", 
-        "test", "pokemon", "555", "หวัดดี", "มีคนไหม", "เล่นไรอยู่"
-    ]
+    send_alert("ระบบ Multi-Account เริ่มทำงานแล้ว")
 
-    url = f"https://discord.com/api/v9/channels/{CHANNEL_ID}/messages"
-    print("SYSTEM STARTED")
-    send_alert("ระบบเริ่มทำงานแล้ว")
+    # สั่งให้ทกุบัญชีแตกลูกน้องออกมารันแยกพร้อมๆ กันทันที
+    for index, token in enumerate(valid_tokens):
+        account_number = index + 1
+        # สร้าง Thread แยกขาดจากกันในแต่ละ Token
+        worker_thread = Thread(
+            target=individual_bot_worker, 
+            args=(account_number, token, CHANNEL_ID)
+        )
+        worker_thread.start()
+        
+        # เว้นจังหวะตอนเปิดตัวนิดหน่อยไม่ให้เปิดพร้อมกันเกินไป
+        time.sleep(2) 
 
-    while True:
-        for index, token in enumerate(TOKENS):
-            print(f"\n====== ACCOUNT {index + 1} ======")
-            print("TOKEN PREFIX:", token[:20])
-
-            headers = {
-                "Authorization": token,
-                "Content-Type": "application/json"
-            }
-
-            payload = {
-                "content": random.choice(messages)
-            }
-
-            try:
-                response = requests.post(
-                    url,
-                    json=payload,
-                    headers=headers,
-                    timeout=10
-                )
-                print("STATUS:", response.status_code)
-
-                if response.status_code == 200:
-                    print(f"[{time.strftime('%H:%M:%S')}] บัญชี {index + 1} ส่งสำเร็จ")
-                elif response.status_code == 429:
-                    retry = response.json().get("retry_after", 30)
-                    print(f"ติด Rate Limit รอ {retry} วินาที")
-                    time.sleep(float(retry))
-                else:
-                    print("ERROR RESPONSE:", response.text)
-                    send_alert(f"บัญชี {index + 1} ERROR {response.status_code}")
-
-            except Exception as e:
-                print("REQUEST ERROR:", e)
-                send_alert(f"Request Error: {e}")
-                time.sleep(5)
-
-            # --- ปรับจุดนี้: พักก่อนสลับบัญชี (ลดเหลือ 3 - 7 วินาที) ---
-            delay_between_accounts = random.randint(3, 7)
-            print(f"พัก {delay_between_accounts} วินาที ก่อนสลับบัญชีถัดไป...")
-            time.sleep(delay_between_accounts)
-
-        # --- ปรับจุดนี้: พักรอบใหญ่หลังจากวนครบทุกบัญชีแล้ว (ลดเหลือ 20 - 40 วินาที) ---
-        long_sleep_time = random.randint(20, 40)
-        print(f"\n=== ส่งครบทุกบัญชีแล้ว พักรอบใหญ่ {long_sleep_time} วินาที ===")
-        time.sleep(long_sleep_time)
-
-# =========================
-# MAIN
-# =========================
 if __name__ == "__main__":
-    t = Thread(target=bot_loop)
-    t.start()
+    # เริ่มต้นระบบจัดการบอทแบบแยก Thread
+    manager = Thread(target=main_bot_manager)
+    manager.start()
+    
+    # รันเว็บเซิร์ฟเวอร์เคียงคู่กันไป
     run_web()
 
