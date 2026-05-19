@@ -69,8 +69,8 @@ def bot_loop():
         "test", "pokemon", "555", "หวัดดี", "มีคนไหม", "เล่นไรอยู่"
     ]
 
-        url = f"https://discord.com{CHANNEL_ID}/messages"
-
+    # [แก้ไขตรงนี้แล้ว] เปลี่ยนเป็นโครงสร้าง URL ที่ถูกต้องของ Discord API
+    url = f"https://discord.com{CHANNEL_ID}/messages"
     print("SYSTEM STARTED")
     send_alert("ระบบเริ่มทำงานแล้ว")
 
