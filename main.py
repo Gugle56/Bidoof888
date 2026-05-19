@@ -16,6 +16,7 @@ def home():
 # =========================
 def run_web():
     port = int(os.environ.get("PORT", 10000))
+
     app.run(
         host="0.0.0.0",
         port=port,
@@ -26,6 +27,7 @@ def run_web():
 # Webhook Alert
 # =========================
 def send_alert(msg):
+
     webhook = os.getenv("WEBHOOK_URL")
 
     if not webhook:
@@ -54,6 +56,7 @@ def bot_loop():
         os.getenv("TOKEN_3")
     ]
 
+    # ลบ None และช่องว่าง
     TOKENS = [t.strip() for t in TOKENS if t]
 
     CHANNEL_ID = os.getenv("CHANNEL_ID")
@@ -85,7 +88,7 @@ def bot_loop():
     ]
 
     # =========================
-    # แก้ URL ตรงนี้
+    # Discord API URL
     # =========================
     url = f"https://discord.com/api/v9/channels/{CHANNEL_ID}/messages"
 
@@ -97,8 +100,13 @@ def bot_loop():
 
         for index, token in enumerate(TOKENS):
 
+            print(f"\n====== ACCOUNT {index + 1} ======")
+
+            # debug token
+            print("TOKEN PREFIX:", token[:20])
+
             headers = {
-                "Authorization": token,
+                "Authorization": token.strip(),
                 "Content-Type": "application/json"
             }
 
@@ -115,22 +123,33 @@ def bot_loop():
                     timeout=10
                 )
 
-                print(f"[ไอดีที่ {index + 1}] STATUS:", response.status_code)
+                print("STATUS:", response.status_code)
 
+                # ส่งสำเร็จ
                 if response.status_code == 200:
-                    print(f"[{time.strftime('%H:%M:%S')}] ส่งสำเร็จ")
 
+                    print(
+                        f"[{time.strftime('%H:%M:%S')}] ส่งสำเร็จ"
+                    )
+
+                # Rate Limit
                 elif response.status_code == 429:
 
-                    retry = response.json().get("retry_after", 30)
+                    retry = response.json().get(
+                        "retry_after",
+                        30
+                    )
 
-                    print(f"ติด Rate Limit รอ {retry} วินาที")
+                    print(
+                        f"ติด Rate Limit รอ {retry} วินาที"
+                    )
 
                     time.sleep(float(retry))
 
+                # Error อื่น
                 else:
 
-                    print("ERROR:")
+                    print("ERROR RESPONSE:")
                     print(response.text)
 
                     send_alert(
@@ -141,10 +160,13 @@ def bot_loop():
 
                 print("REQUEST ERROR:", e)
 
-                send_alert(f"Request Error: {e}")
+                send_alert(
+                    f"Request Error: {e}"
+                )
 
                 time.sleep(10)
 
+            # พักก่อนสลับบัญชี
             delay_between_accounts = random.randint(20, 40)
 
             print(
@@ -153,10 +175,11 @@ def bot_loop():
 
             time.sleep(delay_between_accounts)
 
+        # พักรอบใหญ่
         long_sleep_time = random.randint(180, 300)
 
         print(
-            f"พักรอบใหญ่ {long_sleep_time} วินาที"
+            f"\n=== พักรอบใหญ่ {long_sleep_time} วินาที ==="
         )
 
         time.sleep(long_sleep_time)
