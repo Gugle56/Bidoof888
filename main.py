@@ -15,7 +15,9 @@ def home():
 # Web Server
 # =========================
 def run_web():
+
     port = int(os.environ.get("PORT", 10000))
+
     app.run(
         host="0.0.0.0",
         port=port,
@@ -50,26 +52,30 @@ def send_alert(msg):
 # =========================
 def individual_bot_worker(account_index, token, channel_id):
 
-    print(f"[SYSTEM] บัญชีที่ {account_index} เริ่มทำงาน")
+    print(
+        f"[SYSTEM] บัญชีที่ {account_index} เริ่มทำงาน"
+    )
 
     messages = [
 
-        "hello",
-        "hi",
-        "yo",
-        "gg",
-        "lol",
-        "wow",
+        "hello there",
+        "how are you",
         "pokemon",
-        "555",
-        "หวัดดี",
         "มีคนไหม",
-        "เล่นไรอยู่"
+        "เล่นไรอยู่",
+        "หวัดดี",
+        "วันนี้เป็นไงบ้าง",
+        "กำลังทำอะไร",
+        "เงียบจัง",
+        "มาเล่นกัน"
 
     ]
 
-    # ✅ URL ที่ถูกต้อง
-    url = f"https://discord.com/api/v9/channels/{channel_id}/messages"
+    # ✅ URL ถูกต้อง
+    url = (
+        f"https://discord.com/api/v9/"
+        f"channels/{channel_id}/messages"
+    )
 
     headers = {
 
@@ -87,26 +93,35 @@ def individual_bot_worker(account_index, token, channel_id):
             )
 
             response = requests.post(
+
                 url,
+
                 json={
                     "content": random.choice(messages)
                 },
+
                 headers=headers,
+
                 timeout=10
+
             )
 
             print(
                 f"STATUS: {response.status_code}"
             )
 
-            # ✅ ส่งสำเร็จ
+            # =========================
+            # SUCCESS
+            # =========================
             if response.status_code in [200, 201]:
 
                 print(
                     f"✅ บัญชี {account_index} ส่งสำเร็จ"
                 )
 
-            # ✅ Rate Limit
+            # =========================
+            # RATE LIMIT
+            # =========================
             elif response.status_code == 429:
 
                 retry_seconds = response.json().get(
@@ -118,11 +133,15 @@ def individual_bot_worker(account_index, token, channel_id):
                     f"🛑 บัญชี {account_index} ติด Rate Limit รอ {retry_seconds} วิ"
                 )
 
-                time.sleep(float(retry_seconds))
+                time.sleep(
+                    float(retry_seconds)
+                )
 
                 continue
 
-            # ❌ Error
+            # =========================
+            # ERROR
+            # =========================
             else:
 
                 print(
@@ -141,12 +160,28 @@ def individual_bot_worker(account_index, token, channel_id):
                 f"💥 บัญชี {account_index} ล้มเหลว: {e}"
             )
 
-            time.sleep(10)
+            time.sleep(30)
 
         # =========================
-        # Random Delay
+        # Random Sleep
         # =========================
-        sleep_time = random.randint(15, 30)
+
+        # เวลาพักปกติ
+        sleep_time = random.randint(120, 300)
+
+        # มีโอกาสพักยาว
+        if random.randint(1, 10) == 1:
+
+            long_break = random.randint(
+                900,
+                1800
+            )
+
+            print(
+                f"🌙 บัญชี {account_index} พักยาว {long_break} วินาที"
+            )
+
+            time.sleep(long_break)
 
         print(
             f"⏳ บัญชี {account_index} พัก {sleep_time} วินาที"
@@ -226,7 +261,10 @@ def main_bot_manager():
 
         worker_thread.start()
 
-        time.sleep(2)
+        # เว้นช่วงตอนเปิดแต่ละบัญชี
+        time.sleep(
+            random.randint(5, 15)
+        )
 
 # =========================
 # MAIN
