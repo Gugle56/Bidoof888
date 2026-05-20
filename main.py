@@ -181,15 +181,15 @@ def individual_bot_worker(account_index, token, channel_id):
         # Random Sleep
         # =========================
 
-        # พักปกติ 45-120 วินาที
-        sleep_time = random.randint(45, 120)
+        # พักปกติ 30-90 วินาที
+        sleep_time = random.randint(30, 90)
 
-        # มีโอกาส 10% ที่จะพักยาว
+        # มีโอกาส 10% พักยาว
         if random.randint(1, 10) == 1:
 
             long_break = random.randint(
-                300,
-                900
+                180,
+                600
             )
 
             print(
